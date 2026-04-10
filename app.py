@@ -5,7 +5,8 @@ import numpy as np
 from datetime import datetime
 import base64
 import os
-import random  # 🌟 新增：用于生成逼真的模拟数据
+import random  
+import pytz  # 🌟 新增：导入处理时区的专用库
 
 # ==========================================
 # 1. 页面配置 & 图片 Base64 转换引擎
@@ -143,13 +144,12 @@ DATA_FILE = "realtime_data.json"
 
 
 # ==========================================
-# 2. 核心逻辑与数据生成 (新增 Mock 引擎)
+# 2. 核心逻辑与数据生成 (Mock 引擎)
 # ==========================================
 def read_data():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # 如果文件里有真实的嵌套数据，就用真实的
             if data and "left_platform" in data and len(data["left_platform"]) > 0:
                 return data
     except Exception:
@@ -173,7 +173,7 @@ def generate_strategy(data, direction_name):
     max_door = max(data, key=data.get)
     min_door = min(data, key=data.get)
 
-    if cv >= 0.15 and (data[max_door] - data[min_door] >= 2): # 稍微放宽一点报警阈值，避免演示时一直闪红
+    if cv >= 0.15 and (data[max_door] - data[min_door] >= 2): 
         return f"🚨 {direction_name} {max_door}区域候车人数较多，建议您移步至 {min_door}区域 ➡", "alert"
     else:
         return f"🟢 {direction_name} 客流平稳，请有序排队乘车。", "normal"
@@ -247,12 +247,13 @@ def render_platform(p_data, p_title, direction_name, eta_offset, destination):
 placeholder = st.empty()
 
 while True:
-    # 🌟 核心逻辑：尝试读取真实数据，如果失败或为空，自动挂载模拟数据！
     data = read_data()
     if not data:
         data = generate_mock_data()
         
-    now_str = datetime.now().strftime("%H:%M:%S")
+    # 🌟 核心修改：强制指定亚洲/上海（北京时间）时区
+    tz = pytz.timezone('Asia/Shanghai')
+    now_str = datetime.now(tz).strftime("%H:%M:%S")
 
     with placeholder.container():
         st.markdown(f"""
@@ -292,4 +293,4 @@ while True:
             </div>
         """, unsafe_allow_html=True)
 
-    time.sleep(2) # 演示模式下，每 2 秒刷新一次，视觉上更舒适不晕
+    time.sleep(2)
