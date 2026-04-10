@@ -5,12 +5,12 @@ import numpy as np
 from datetime import datetime
 import base64
 import os
+import random  # 🌟 新增：用于生成逼真的模拟数据
 
 # ==========================================
 # 1. 页面配置 & 图片 Base64 转换引擎
 # ==========================================
 st.set_page_config(page_title="PIDS 智慧站台终端", page_icon="🚇", layout="wide", initial_sidebar_state="collapsed")
-
 
 def get_base64_image(image_path):
     if os.path.exists(image_path):
@@ -18,7 +18,6 @@ def get_base64_image(image_path):
             return f"url('data:image/png;base64,{base64.b64encode(img_file.read()).decode()}')"
     else:
         return "linear-gradient(to right, #e0eafc, #cfdef3)"  # 备用浅色渐变
-
 
 LOCAL_IMAGE_PATH = "image_0.png"
 bg_css_url = get_base64_image(LOCAL_IMAGE_PATH)
@@ -36,7 +35,7 @@ CSS_STYLE = """
         background-repeat: no-repeat;
         color: #0F172A; 
     }
-
+    
     header {visibility: hidden;}
     footer {visibility: hidden;}
     #MainMenu {visibility: hidden;}
@@ -53,18 +52,18 @@ CSS_STYLE = """
 
     /* 顶部信息栏 - 改为极淡的半透明 + 边框 */
     .header-bar {
-        background: rgba(255, 255, 255, 0.25); /* 降低白底，增加通透感 */
+        background: rgba(255, 255, 255, 0.25); 
         backdrop-filter: blur(12px); 
         padding: 12px 25px;
         border-radius: 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border: 1px solid rgba(255, 255, 255, 0.8); /* 保留清晰的白色边框 */
+        border: 1px solid rgba(255, 255, 255, 0.8); 
         margin-bottom: 15px;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); 
     }
-
+    
     .station-name { 
         font-size: 36px; 
         font-weight: 900; 
@@ -73,13 +72,13 @@ CSS_STYLE = """
         display: flex;
         align-items: center;
     }
-
+    
     .time-display { font-size: 26px; font-weight: bold; color: #334155; font-family: monospace;}
 
     /* 站台标题 - 极简透明 */
     .platform-title {
         font-size: 24px; font-weight: 900; color: #0F172A; 
-        background: rgba(255, 255, 255, 0.2); /* 透明化 */
+        background: rgba(255, 255, 255, 0.2); 
         backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.6);
         padding: 6px 20px; 
@@ -100,13 +99,13 @@ CSS_STYLE = """
         animation: pulse-light 2s infinite;
     } 
 
-    /* 车厢卡片 - 彻底改成高级透明悬浮感 */
+    /* 车厢卡片 - 高级透明悬浮感 */
     .train-car-card {
-        background-color: rgba(255, 255, 255, 0.15); /* 🌟 极淡的底色，摆脱死白 */
-        backdrop-filter: blur(10px); /* 毛玻璃效果 */
+        background-color: rgba(255, 255, 255, 0.15); 
+        backdrop-filter: blur(10px); 
         border-radius: 12px; 
-        padding: 15px; /* 减小一点内边距，给下方留空间 */
-        border: 1px solid rgba(255, 255, 255, 0.7); /* 明显的玻璃边框 */
+        padding: 15px; 
+        border: 1px solid rgba(255, 255, 255, 0.7); 
         border-top: 5px solid #475569; 
         text-align: center; transition: transform 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.03);
@@ -144,15 +143,26 @@ DATA_FILE = "realtime_data.json"
 
 
 # ==========================================
-# 2. 核心逻辑 (完全未修改)
+# 2. 核心逻辑与数据生成 (新增 Mock 引擎)
 # ==========================================
 def read_data():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            # 如果文件里有真实的嵌套数据，就用真实的
+            if data and "left_platform" in data and len(data["left_platform"]) > 0:
+                return data
     except Exception:
-        return None
+        pass
+    return None
 
+def generate_mock_data():
+    """🌟 演示模式引擎：随机生成逼真的候车人数"""
+    zones = ["1号门", "2号门", "3号门", "4号门", "5号门", "6号门"]
+    return {
+        "left_platform": {zone: random.randint(1, 10) for zone in zones},
+        "right_platform": {zone: random.randint(1, 12) for zone in zones}
+    }
 
 def generate_strategy(data, direction_name):
     counts = list(data.values())
@@ -163,18 +173,16 @@ def generate_strategy(data, direction_name):
     max_door = max(data, key=data.get)
     min_door = min(data, key=data.get)
 
-    if cv >= 0.15 and (data[max_door] - data[min_door] >= 1):
+    if cv >= 0.15 and (data[max_door] - data[min_door] >= 2): # 稍微放宽一点报警阈值，避免演示时一直闪红
         return f"🚨 {direction_name} {max_door}区域候车人数较多，建议您移步至 {min_door}区域 ➡", "alert"
     else:
         return f"🟢 {direction_name} 客流平稳，请有序排队乘车。", "normal"
-
 
 def get_mock_arrival_time(offset=0):
     current_sec = int(time.time()) + offset
     eta_sec = 300 - (current_sec % 300)
     minutes = max(1, eta_sec // 60)
     return f"{minutes} 分钟"
-
 
 def render_platform(p_data, p_title, direction_name, eta_offset, destination):
     st.markdown(f'<div class="platform-title">{p_title}</div>', unsafe_allow_html=True)
@@ -239,7 +247,11 @@ def render_platform(p_data, p_title, direction_name, eta_offset, destination):
 placeholder = st.empty()
 
 while True:
+    # 🌟 核心逻辑：尝试读取真实数据，如果失败或为空，自动挂载模拟数据！
     data = read_data()
+    if not data:
+        data = generate_mock_data()
+        
     now_str = datetime.now().strftime("%H:%M:%S")
 
     with placeholder.container():
@@ -257,25 +269,20 @@ while True:
             </div>
         """, unsafe_allow_html=True)
 
-        if not data:
-            st.info("🛰️ 正在从 AI 视觉边缘节点提取双向客流状态...")
-        else:
-            l_data = data.get("left_platform", {})
-            r_data = data.get("right_platform", {})
+        l_data = data.get("left_platform", {})
+        r_data = data.get("right_platform", {})
 
-            if l_data:
-                render_platform(l_data, "⬅️ 上行站台 (A方向)", "上行列车", 0, "软件园 / 高铁站")
+        if l_data:
+            render_platform(l_data, "⬅️ 上行站台 (A方向)", "上行列车", 0, "软件园 / 高铁站")
 
-            if l_data and r_data:
-                # 分割线也做了透明化处理
-                st.markdown("<hr style='border: 1px solid rgba(255, 255, 255, 0.4); margin: 10px 0;'>",
-                            unsafe_allow_html=True)
+        if l_data and r_data:
+            st.markdown("<hr style='border: 1px solid rgba(255, 255, 255, 0.4); margin: 10px 0;'>",
+                        unsafe_allow_html=True)
 
-            if r_data:
-                render_platform(r_data, "➡️ 下行站台 (B方向)", "下行列车", 150, "大学城 / 国际机场")
-
-            # 🌟 核心修改点：这里加了一个隐形的防撞垫，完美隔开下方跑马灯和卡片！
-            st.markdown("<div style='height: 70px; width: 100%;'></div>", unsafe_allow_html=True)
+        if r_data:
+            render_platform(r_data, "➡️ 下行站台 (B方向)", "下行列车", 150, "大学城 / 国际机场")
+        
+        st.markdown("<div style='height: 70px; width: 100%;'></div>", unsafe_allow_html=True)
 
         st.markdown("""
             <div class="marquee-container">
@@ -285,4 +292,4 @@ while True:
             </div>
         """, unsafe_allow_html=True)
 
-    time.sleep(1)
+    time.sleep(2) # 演示模式下，每 2 秒刷新一次，视觉上更舒适不晕
