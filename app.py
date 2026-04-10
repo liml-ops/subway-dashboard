@@ -6,7 +6,7 @@ from datetime import datetime
 import base64
 import os
 import random  
-import pytz  # 🌟 新增：导入处理时区的专用库
+import pytz  
 
 # ==========================================
 # 1. 页面配置 & 图片 Base64 转换引擎
@@ -18,15 +18,15 @@ def get_base64_image(image_path):
         with open(image_path, "rb") as img_file:
             return f"url('data:image/png;base64,{base64.b64encode(img_file.read()).decode()}')"
     else:
-        return "linear-gradient(to right, #e0eafc, #cfdef3)"  # 备用浅色渐变
+        return "linear-gradient(to right, #e0eafc, #cfdef3)"  
 
 LOCAL_IMAGE_PATH = "image_0.png"
 bg_css_url = get_base64_image(LOCAL_IMAGE_PATH)
 
-# 🚨 极简通透风格 (Glassmorphism) UI 重构 🚨
+# 🚨 极简通透风格 (Glassmorphism) UI 重构 + 🌟 手机自适应 🚨
 CSS_STYLE = """
     <style>
-    /* 强制锁定页面高度，强杀滚动条 */
+    /* 默认：强制锁定页面高度，强杀滚动条 */
     html, body, [data-testid="stAppViewContainer"] {
         overflow: hidden !important;
         background-image: BG_IMAGE_PLACEHOLDER;
@@ -51,7 +51,7 @@ CSS_STYLE = """
     [data-testid="stMetricValue"] * { color: #0F172A !important; font-weight: 900 !important; }
     [data-testid="stMetricLabel"] * { color: #0F172A !important; font-weight: 900 !important; font-size: 22px !important; }
 
-    /* 顶部信息栏 - 改为极淡的半透明 + 边框 */
+    /* 顶部信息栏 */
     .header-bar {
         background: rgba(255, 255, 255, 0.25); 
         backdrop-filter: blur(12px); 
@@ -65,27 +65,16 @@ CSS_STYLE = """
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); 
     }
     
-    .station-name { 
-        font-size: 36px; 
-        font-weight: 900; 
-        color: #004D9D; 
-        letter-spacing: 2px;
-        display: flex;
-        align-items: center;
-    }
-    
+    .station-name { font-size: 36px; font-weight: 900; color: #004D9D; letter-spacing: 2px; display: flex; align-items: center;}
     .time-display { font-size: 26px; font-weight: bold; color: #334155; font-family: monospace;}
 
-    /* 站台标题 - 极简透明 */
+    /* 站台标题 */
     .platform-title {
         font-size: 24px; font-weight: 900; color: #0F172A; 
-        background: rgba(255, 255, 255, 0.2); 
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        padding: 6px 20px; 
+        background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.6); padding: 6px 20px; 
         border-radius: 8px; margin-top: 10px; margin-bottom: 10px;
-        border-left: 6px solid #2563EB;
-        display: inline-block;
+        border-left: 6px solid #2563EB; display: inline-block;
     }
 
     /* 横幅 */
@@ -95,21 +84,14 @@ CSS_STYLE = """
         backdrop-filter: blur(5px);
     }
     .guide-normal { background-color: rgba(209, 250, 229, 0.7); border: 2px solid #10B981; color: #065F46; } 
-    .guide-alert { 
-        background-color: rgba(220, 38, 38, 0.85); border: 2px solid #991B1B; color: #FFFFFF; 
-        animation: pulse-light 2s infinite;
-    } 
+    .guide-alert { background-color: rgba(220, 38, 38, 0.85); border: 2px solid #991B1B; color: #FFFFFF; animation: pulse-light 2s infinite;} 
 
-    /* 车厢卡片 - 高级透明悬浮感 */
+    /* 车厢卡片 */
     .train-car-card {
-        background-color: rgba(255, 255, 255, 0.15); 
-        backdrop-filter: blur(10px); 
-        border-radius: 12px; 
-        padding: 15px; 
-        border: 1px solid rgba(255, 255, 255, 0.7); 
-        border-top: 5px solid #475569; 
-        text-align: center; transition: transform 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        background-color: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); 
+        border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.7); 
+        border-top: 5px solid #475569; text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 10px;
     }
 
     .car-number { font-size: 18px; color: #475569; margin-bottom: 8px; font-weight: bold;}
@@ -134,6 +116,40 @@ CSS_STYLE = """
         0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
         70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
         100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+
+    /* ========================================== */
+    /* 🌟 核心魔法：手机端专属自适应逻辑 (Media Queries) */
+    /* ========================================== */
+    @media screen and (max-width: 768px) {
+        /* 解除手机端的滚动条封印，允许上下滑动 */
+        html, body, [data-testid="stAppViewContainer"] {
+            overflow: auto !important; 
+        }
+        
+        /* 顶部栏改为上下堆叠布局 */
+        .header-bar {
+            flex-direction: column;
+            gap: 8px;
+            padding: 15px;
+        }
+        
+        /* 整体字体按比例缩小，避免撑爆屏幕 */
+        .station-name { font-size: 26px; }
+        .time-display { font-size: 20px; }
+        .platform-title { font-size: 20px; }
+        .guide-banner { font-size: 15px; padding: 8px; }
+        
+        /* 原生的 metric 字体也缩小一点 */
+        [data-testid="stMetricLabel"] * { font-size: 16px !important; }
+        [data-testid="stMetricValue"] * { font-size: 22px !important; }
+        
+        /* 车厢卡片字体调整 */
+        .car-number { font-size: 16px; }
+        .car-people { font-size: 28px; }
+        
+        /* 给底部跑马灯留出更多空间，防止挡住最后一个车厢 */
+        .block-container { padding-bottom: 6rem !important; }
     }
     </style>
 """
@@ -251,7 +267,7 @@ while True:
     if not data:
         data = generate_mock_data()
         
-    # 🌟 核心修改：强制指定亚洲/上海（北京时间）时区
+    # 🌟 强制指定亚洲/上海（北京时间）时区
     tz = pytz.timezone('Asia/Shanghai')
     now_str = datetime.now(tz).strftime("%H:%M:%S")
 
